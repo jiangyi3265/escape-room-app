@@ -1,0 +1,12 @@
+{
+  "appid": "wx9f6634b08ddb57cf",
+  "projectname": "零零谷九汇城店",
+  "miniprogramRoot": "dist/build/mp-weixin/",
+  "cloudfunctionRoot": "cloudfunctions/",
+  "compileType": "miniprogram",
+  "setting": {
+    "urlCheck": false,
+    "es6": true,
+    "enhance": true
+  }
+}
