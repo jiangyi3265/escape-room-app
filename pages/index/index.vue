@@ -17,14 +17,14 @@
 					<text class="icon-glyph">◌</text>
 					<text v-if="unreadCount" class="notification-dot">{{ unreadCount }}</text>
 				</view>
-				<view class="avatar" @click="switchRole"><text>{{ role === 'employee' ? '林' : '店' }}</text></view>
+				<view class="avatar" @click="openMyPage"><text>{{ role === 'employee' ? myInitial : '店' }}</text></view>
 			</view>
 		</view>
 
 		<scroll-view v-if="role === 'employee' && activeTab === 'home'" scroll-y class="page-scroll">
 			<view class="page-content home-page">
 				<view class="greeting-block">
-					<view><text class="greeting">{{ greetingText }}，林澈</text><text class="subtle">当前还有 {{ activeOrdersCount }} 个订单待完成</text></view>
+					<view><text class="greeting">{{ greetingText }}，{{ myName }}</text><text class="subtle">当前还有 {{ activeOrdersCount }} 个订单待完成</text></view>
 					<view class="status-chip"><text class="pulse"></text>在岗中</view>
 				</view>
 				<view class="score-band" @click="activeTab = 'points'">
@@ -49,7 +49,7 @@
 				</view>
 				<view v-if="!activeOrder" class="helper-strip"><text>当前没有待处理订单，已完成订单由店长查看。</text></view>
 				<view class="quick-grid">
-					<view class="quick-action primary-quick" @click="activeTab = 'points'"><text class="quick-symbol">＋</text><text class="quick-title">完成积分任务</text><text class="quick-caption">32 项可选</text></view>
+					<view class="quick-action primary-quick" @click="activeTab = 'points'"><text class="quick-symbol">＋</text><text class="quick-title">完成积分任务</text><text class="quick-caption">{{ tasks.length }} 项可选</text></view>
 					<view class="quick-action" @click="showOrderForm('create')"><text class="quick-symbol">⌁</text><text class="quick-title">创建订单</text><text class="quick-caption">录入预约信息</text></view>
 					<view class="quick-action" @click="activeTab = 'grab'"><text class="quick-symbol">⚡</text><text class="quick-title">抢临时任务</text><text class="quick-caption">{{ openJobs.length }} 个待抢</text></view>
 				</view>
@@ -92,7 +92,7 @@
 					<view v-if="!employeePointLedger.length" class="empty-state compact-empty"><text class="empty-title">近一个月暂无积分明细</text><text class="subtle">新记录会在这里保留一个月</text></view>
 				</view>
 				<view v-else class="ranking-list">
-					<view v-for="(person, index) in rankedStaff" :key="person.id" :class="['ranking-row', person.name === '林澈' && 'me']"><text class="ranking-index">{{ index + 1 }}</text><view class="small-avatar">{{ person.name.slice(0, 1) }}</view><view class="grow"><text class="task-title">{{ person.name }}<text v-if="person.name === '林澈'" class="me-label">我</text></text><text class="task-meta-row">本月完成 {{ person.tasks }} 项</text></view><text class="rank-points">{{ person.points }}</text></view>
+					<view v-for="(person, index) in rankedStaff" :key="person.id" :class="['ranking-row', person.id === myId && 'me']"><text class="ranking-index">{{ index + 1 }}</text><view class="small-avatar">{{ person.name.slice(0, 1) }}</view><view class="grow"><text class="task-title">{{ person.name }}<text v-if="person.id === myId" class="me-label">我</text></text><text class="task-meta-row">本月完成 {{ person.tasks }} 项</text></view><text class="rank-points">{{ person.points }}</text></view>
 				</view>
 			</view>
 		</scroll-view>
@@ -129,15 +129,16 @@
 
 		<scroll-view v-if="role === 'employee' && activeTab === 'me'" scroll-y class="page-scroll">
 			<view class="page-content profile-page">
-				<view class="profile-hero"><view class="profile-avatar">林</view><view><text class="profile-name">林澈</text><text class="subtle">员工 · {{ storeName }}</text></view><view class="status-chip"><text class="pulse"></text>在岗</view></view>
-				<view class="profile-stats"><view><text>{{ employeePoints }}</text><text>积分</text></view><view><text>{{ myCompletedJobs }}</text><text>抢单</text></view><view><text>18</text><text>订单节点</text></view></view>
+				<view class="profile-hero"><view class="profile-avatar">{{ myInitial }}</view><view><text class="profile-name">{{ myName }}</text><text class="subtle">员工 · {{ storeName }}</text></view><view class="status-chip"><text class="pulse"></text>在岗</view></view>
+				<view class="profile-stats"><view><text>{{ employeePoints }}</text><text>积分</text></view><view><text>{{ myCompletedJobs }}</text><text>抢单</text></view><view><text>{{ myStepCount }}</text><text>订单节点</text></view></view>
 				<view class="settings-list">
 					<view class="setting-row" @click="openNotifications"><text class="setting-symbol">◌</text><text class="grow">消息通知</text><text class="setting-value">{{ unreadCount }} 条未读</text><text>›</text></view>
 					<view class="setting-row" @click="pointView = 'ledger'; activeTab = 'points'"><text class="setting-symbol">◇</text><text class="grow">积分明细</text><text>›</text></view>
 					<view class="setting-row" @click="jobView = 'mine'; activeTab = 'grab'"><text class="setting-symbol">⚡</text><text class="grow">我的抢单</text><text>›</text></view>
-					<view class="setting-row" @click="switchRole"><text class="setting-symbol">⇄</text><text class="grow">切换到店长端</text><text class="setting-value">演示</text><text>›</text></view>
+					<view class="setting-row" @click="openPasswordForm"><text class="setting-symbol">◈</text><text class="grow">修改登录密码</text><text class="setting-value">{{ myPhone }}</text><text>›</text></view>
+					<view class="setting-row" @click="openAgreement('terms')"><text class="setting-symbol">§</text><text class="grow">用户服务协议</text><text>›</text></view><view class="setting-row" @click="openAgreement('privacy')"><text class="setting-symbol">◎</text><text class="grow">隐私政策</text><text>›</text></view><view class="setting-row" @click="confirmLogout"><text class="setting-symbol">⇄</text><text class="grow">退出登录</text><text class="setting-value">切换账号</text><text>›</text></view>
 				</view>
-				<text class="version">暗格门店 · 原型版 1.0</text>
+				<text class="version">暗格门店 · 1.1.0</text>
 			</view>
 		</scroll-view>
 
@@ -192,9 +193,9 @@
 
 		<scroll-view v-if="role === 'manager' && activeTab === 'managerMe'" scroll-y class="page-scroll">
 			<view class="page-content profile-page">
-				<view class="profile-hero"><view class="profile-avatar manager">店</view><view><text class="profile-name">江店长</text><text class="subtle">店长 · {{ storeName }}</text></view><view class="remote-chip">远程在线</view></view>
+				<view class="profile-hero"><view class="profile-avatar manager">店</view><view><text class="profile-name">{{ myName }}</text><text class="subtle">店长 · {{ storeName }}</text></view><view class="remote-chip">远程在线</view></view>
 				<view class="settings-list config-entries"><view class="setting-row" @click="openWorkspace('points')"><text class="setting-symbol">◇</text><text class="grow">积分任务设置</text><text class="setting-value">名称与奖励积分</text><text>›</text></view><view class="setting-row" @click="openWorkspace('themes')"><text class="setting-symbol">⌂</text><text class="grow">主题管理</text><text class="setting-value">{{ themeOptions.length }} 个主题</text><text>›</text></view></view>
-				<view class="settings-list"><view class="setting-row" @click="openNotifications"><text class="setting-symbol">◌</text><text class="grow">门店通知</text><text class="setting-value">{{ unreadCount }} 条未读</text><text>›</text></view><view class="setting-row" @click="activeTab='review'"><text class="setting-symbol">✓</text><text class="grow">审核记录</text><text>›</text></view><view class="setting-row" @click="openStaffManagement('manage')"><text class="setting-symbol">♙</text><text class="grow">员工管理</text><text class="setting-value">{{ activeStaff.length }} 人在职</text><text>›</text></view><view class="setting-row" @click="switchRole"><text class="setting-symbol">⇄</text><text class="grow">切换到员工端</text><text class="setting-value">演示</text><text>›</text></view></view>
+				<view class="settings-list"><view class="setting-row" @click="openNotifications"><text class="setting-symbol">◌</text><text class="grow">门店通知</text><text class="setting-value">{{ unreadCount }} 条未读</text><text>›</text></view><view class="setting-row" @click="activeTab='review'"><text class="setting-symbol">✓</text><text class="grow">审核记录</text><text>›</text></view><view class="setting-row" @click="openStaffManagement('manage')"><text class="setting-symbol">♙</text><text class="grow">员工管理</text><text class="setting-value">{{ activeStaff.length }} 人在职</text><text>›</text></view><view class="setting-row" @click="openPasswordForm"><text class="setting-symbol">◈</text><text class="grow">修改登录密码</text><text class="setting-value">{{ myPhone }}</text><text>›</text></view><view class="setting-row" @click="openAgreement('terms')"><text class="setting-symbol">§</text><text class="grow">用户服务协议</text><text>›</text></view><view class="setting-row" @click="openAgreement('privacy')"><text class="setting-symbol">◎</text><text class="grow">隐私政策</text><text>›</text></view><view class="setting-row" @click="confirmLogout"><text class="setting-symbol">⇄</text><text class="grow">退出登录</text><text class="setting-value">切换账号</text><text>›</text></view></view>
 			</view>
 		</scroll-view>
 
@@ -246,24 +247,53 @@
 			</view></scroll-view>
 		</view>
 
-		<view v-if="staffActionVisible && selectedStaff" class="sheet-mask" @click="closeStaffActions"><view class="bottom-sheet" @click.stop><view class="sheet-handle"></view><view class="staff-sheet-head"><view class="profile-avatar compact">{{ selectedStaff.name.slice(0,1) }}</view><view><text class="sheet-title">{{ selectedStaff.name }}</text><text class="sheet-subtitle">{{ selectedStaff.points }} 积分 · 完成 {{ selectedStaff.tasks }} 项</text></view></view><view class="sheet-action" @click="openStaffLedger(selectedStaff)"><text>查看积分明细</text><text>近一个月 ›</text></view><view class="sheet-action" @click="adjustStaffPoints(selectedStaff)"><text>调整员工积分</text><text>›</text></view><view :class="['sheet-action', selectedStaff.status === 'active' && 'danger-text']" @click="toggleStaffStatus(selectedStaff)"><text>{{ selectedStaff.status === 'active' ? '停用员工账号' : '恢复员工账号' }}</text><text>›</text></view><view class="sheet-action danger-text" @click="removeStaffAccount(selectedStaff)"><text>删除员工账号</text><text>›</text></view><button class="sheet-cancel" @click="closeStaffActions">关闭</button></view></view>
+		<view v-if="staffActionVisible && selectedStaff" class="sheet-mask" @click="closeStaffActions"><view class="bottom-sheet" @click.stop><view class="sheet-handle"></view><view class="staff-sheet-head"><view class="profile-avatar compact">{{ selectedStaff.name.slice(0,1) }}</view><view><text class="sheet-title">{{ selectedStaff.name }}</text><text class="sheet-subtitle">{{ selectedStaff.points }} 积分 · 完成 {{ selectedStaff.tasks }} 项</text></view></view><view class="sheet-action" @click="openStaffLedger(selectedStaff)"><text>查看积分明细</text><text>近一个月 ›</text></view><view class="sheet-action" @click="adjustStaffPoints(selectedStaff)"><text>调整员工积分</text><text>›</text></view><view class="sheet-action" @click="resetStaffPassword(selectedStaff)"><text>重置登录密码</text><text>›</text></view><view :class="['sheet-action', selectedStaff.status === 'active' && 'danger-text']" @click="toggleStaffStatus(selectedStaff)"><text>{{ selectedStaff.status === 'active' ? '停用员工账号' : '恢复员工账号' }}</text><text>›</text></view><view class="sheet-action danger-text" @click="removeStaffAccount(selectedStaff)"><text>删除员工账号</text><text>›</text></view><button class="sheet-cancel" @click="closeStaffActions">关闭</button></view></view>
 
 		<view v-if="staffLedgerVisible && ledgerStaff" class="overlay-page staff-ledger-overlay"><view class="overlay-header"><view class="back-button" @click="closeStaffLedger">‹</view><view class="overlay-heading"><text>{{ ledgerStaff.name }}的积分明细</text><text>近一个月 · 当前 {{ ledgerStaff.points }} 分</text></view><view></view></view><scroll-view scroll-y class="overlay-scroll"><view class="staff-ledger-content"><view class="helper-strip"><text class="helper-icon">i</text><text>记录保留一个月。店长可撤销已到账的单笔正积分，撤销后总积分同步扣减。</text></view><view class="ledger-list"><view v-for="entry in staffLedgerEntries" :key="entry.id" class="ledger-row staff-ledger-row"><view class="ledger-date full-date">{{ formatTime(entry.occurredAt) }}</view><view class="grow"><text class="task-title">{{ entry.title }}</text><text class="task-meta-row">{{ entry.state }}</text></view><view class="ledger-action"><text :class="['ledger-points', entry.points > 0 ? 'positive' : 'negative']">{{ entry.points > 0 ? '+' : '' }}{{ entry.points }}</text><button v-if="canRevokePoint(entry)" class="revoke-button" @click="revokeStaffPoint(entry)">撤销</button></view></view><view v-if="!staffLedgerEntries.length" class="empty-state compact-empty"><text class="empty-title">近一个月暂无积分明细</text></view></view></view></scroll-view></view>
 
 		<view v-if="notificationsVisible" class="overlay-page"><view class="overlay-header"><view class="back-button" @click="notificationsVisible=false">‹</view><view class="overlay-heading"><text>消息通知</text><text>门店关键操作实时同步</text></view><text class="text-link" @click="markAllRead">全部已读</text></view><scroll-view scroll-y class="overlay-scroll"><view class="notification-list"><view class="wechat-reminder"><view class="grow"><text class="task-title">微信页面提醒</text><text class="activity-detail">订阅后，离开小程序也能收到门店关键消息</text></view><button class="reminder-button" @click="enableWechatReminders">{{ wechatSubscriptionEnabled ? '再次订阅' : '开启提醒' }}</button></view><view v-for="item in notifications" :key="item.id" :class="['notification-row', !item.read && 'unread']" @click="readNotification(item)"><view class="activity-icon" :class="item.type">{{ item.icon }}</view><view class="grow"><view class="notification-title-row"><text class="activity-title">{{ item.title }}</text><text class="activity-time">{{ formatTime(item.time) }}</text></view><text class="activity-detail">{{ item.detail }}</text></view></view></view></scroll-view></view>
-		<StoreWorkspace v-if="workspaceVisible" :state="workspaceState" :context="workspaceContext" :initial-mode="workspaceMode" :navigation-style="navigationStyle" @close="workspaceVisible=false" @changed="saveWorkspaceChange" />
+		<StoreWorkspace v-if="workspaceVisible" :state="workspaceState" :context="workspaceContext" :actions="workspaceActions" :initial-mode="workspaceMode" :navigation-style="navigationStyle" @close="workspaceVisible=false" @changed="saveWorkspaceChange" />
+
+		<view v-if="passwordVisible" class="overlay-page form-overlay">
+			<view class="overlay-header"><view class="back-button" @click="passwordVisible=false">‹</view><view class="overlay-heading"><text>修改登录密码</text><text>{{ myName }} · {{ myPhone }}</text></view><view></view></view>
+			<scroll-view scroll-y class="overlay-scroll"><view class="form-content">
+				<view class="field"><text class="field-label">原密码</text><input v-model="passwordForm.oldPassword" password maxlength="32" placeholder="当前使用的密码" placeholder-class="placeholder" /></view>
+				<view class="field"><text class="field-label">新密码</text><input v-model="passwordForm.newPassword" password maxlength="32" placeholder="至少 6 位" placeholder-class="placeholder" /></view>
+				<view class="field"><text class="field-label">再次输入新密码</text><input v-model="passwordForm.confirmPassword" password maxlength="32" placeholder="与上面保持一致" placeholder-class="placeholder" /></view>
+				<view class="form-note"><text class="helper-icon">i</text><text>修改后，其它手机上的登录会自动退出。</text></view><button class="primary-button full sticky-submit" @click="submitPassword">保存新密码</button>
+			</view></scroll-view>
+		</view>
+
+		<view v-if="sessionChecked && !me" class="overlay-page form-overlay">
+			<view class="overlay-header"><view></view><view class="overlay-heading"><text>登录门店账号</text><text>{{ storeName }}</text></view><view></view></view>
+			<scroll-view scroll-y class="overlay-scroll"><view class="form-content">
+				<view class="field"><text class="field-label">手机号</text><input v-model="loginForm.phone" type="number" maxlength="11" placeholder="店长开通账号时登记的手机号" placeholder-class="placeholder" /></view>
+				<view class="field"><text class="field-label">密码</text><input v-model="loginForm.password" password maxlength="32" placeholder="初始密码由店长告知" placeholder-class="placeholder" @confirm="login" /></view>
+				<view class="form-note"><text class="helper-icon">i</text><text>手机号仅用于门店账号登录与权限管理；密码用于身份核验。忘记密码请联系店长重置。</text></view>
+				<view class="form-note" @click="agreed = !agreed"><text class="setting-symbol">{{ agreed ? '✓' : '○' }}</text><text>我已阅读并同意<text class="text-link" @click.stop="openAgreement('terms')">《用户服务协议》</text>与<text class="text-link" @click.stop="openAgreement('privacy')">《隐私政策》</text></text></view>
+				<button class="primary-button full sticky-submit" @click="login">{{ loginPending ? '正在登录…' : '登录' }}</button>
+			</view></scroll-view>
+		</view>
+
+		<view v-if="agreementPage" class="overlay-page form-overlay">
+			<view class="overlay-header"><view class="back-button" @click="agreementPage=''">‹</view><view class="overlay-heading"><text>{{ agreementDoc.title }}</text><text>{{ agreementDoc.updated }}</text></view><view></view></view>
+			<scroll-view scroll-y class="overlay-scroll"><view class="form-content">
+				<view v-for="(section, index) in agreementDoc.sections" :key="index" class="field"><text class="field-label">{{ section.heading }}</text><text v-for="(line, i) in section.body" :key="i" class="job-desc">{{ line }}</text></view>
+			</view></scroll-view>
+		</view>
 	</view>
 </template>
 
 <script>
-import { loadAppState, saveAppState } from '../../services/app-state.js'
+import { STATE_KEYS, createEmptyAppState, normaliseSnapshotState, isSameOrNewerVersion, loadCachedSnapshot, saveCachedSnapshot, clearCachedSnapshot } from '../../services/app-state.js'
+import { storeApi, getToken, setToken, onUnauthorized, newRequestId } from '../../services/store-api.js'
 import { readWechatNavigationStyle } from '../../services/navigation-layout.js'
+import { LEGAL_DOCS } from '../../services/legal-docs.js'
 import StoreWorkspace from '../../components/StoreWorkspace.vue'
 import PaymentForm from '../../components/PaymentForm.vue'
 import { compactOrderSteps, canViewOrder as roleCanViewOrder, filterOrdersForRole } from '../../services/order-rules.js'
-import { paymentDateKey, formatMoney, paymentSummary, parsePaymentAmounts, recordOrderPayment, reverseOrderPayment, todayPaymentTotals, paymentTotalsByDay } from '../../services/payment-rules.js'
-import { localDateKey, rolloverDailyPointState, addPointEntry, employeePointEntries, prunePointLedger, canRevokePointEntry, revokePointEntry } from '../../services/points-rules.js'
-import { deleteEmployeeAccount } from '../../services/staff-rules.js'
+import { formatMoney, paymentSummary, parsePaymentAmounts, todayPaymentTotals, paymentTotalsByDay } from '../../services/payment-rules.js'
+import { localDateKey, employeePointEntries, prunePointLedger, canRevokePointEntry } from '../../services/points-rules.js'
 import { formatDateTime, formatDateLabel, greetingForDate, nowTimestamp, overviewForDate } from '../../services/time-format.js'
 import { configuredTemplateIds, requestWechatSubscription, registerWechatSubscriber, publishWechatNotification } from '../../services/wechat-notifications.js'
 import {
@@ -278,32 +308,50 @@ import {
 } from '../../services/order-rules.js'
 
 const STORE_NAME = '零零谷 · 九汇城店'
+const STORE_CODE = 'jiuhuicheng'
+// 门店端轮询间隔：先比对版本号（很小的请求），有变化才取完整数据
+const POLL_INTERVAL = 8000
+const EMPLOYEE_TABS = ['home', 'points', 'grab', 'me']
+const MANAGER_TABS = ['dashboard', 'review', 'publish', 'managerMe']
+const pad = value => String(value).padStart(2, '0')
 
 export default {
 	components: { StoreWorkspace, PaymentForm },
 	data() {
-		const appState = loadAppState()
 		let navigationStyle = {}
 		// #ifdef MP-WEIXIN
 		navigationStyle = readWechatNavigationStyle(uni)
 		// #endif
 		return {
-			...appState,
+			...createEmptyAppState(),
 			navigationStyle,
+			me: null, sessionChecked: false, syncVersion: '', syncing: false, syncQueued: false, busy: false, pollTimer: null,
+			storeCode: STORE_CODE, storeDate: '', storeOffset: 480,
+			loginForm: { phone: '', password: '' }, loginPending: false,
+			agreed: false, agreementPage: '',
+			passwordVisible: false, passwordForm: { oldPassword: '', newPassword: '', confirmPassword: '' },
+			staffLedger: [],
 			role: 'employee', activeTab: 'home', liveTime: '', currentMoment: Date.now(), timer: null, persistTimer: null, storeName: STORE_NAME,
 			pointView: 'tasks', taskFilter: 'all', jobView: 'open', reviewView: 'pending', orderFilter: 'all',
 			jobForm: { title:'', description:'', deadline:'', urgency:'normal', restricted:false, allowedEmployees:[] }, urgencyOptions: [{id:'low',label:'普通'},{id:'normal',label:'尽快'},{id:'urgent',label:'紧急'}],
 			selectedOrder:null,showOrderMenu:false,orderFormVisible:false,orderFormMode:'create',editingOrderId:null,orderForm:{theme:'',time:'',people:'',contact:'',note:''},
 			workspaceVisible:false,workspaceMode:'repairs',
-			receiptDate:paymentDateKey(),
+			receiptDate:localDateKey(),
 			correctionVisible:false,correctionOrder:null,correctionTarget:'',correctionReason:'',
 			staffManagementVisible:false,staffView:'manage',staffActionVisible:false,selectedStaff:null,staffLedgerVisible:false,ledgerStaff:null,
 			notificationsVisible:false
 		}
 	},
 	computed: {
-		dailyReceipts(){return todayPaymentTotals(this.receipts,this.receiptDate)},
-		sevenDayReceipts(){return paymentTotalsByDay(this.receipts,7,new Date(this.currentMoment))},
+		agreementDoc(){return LEGAL_DOCS[this.agreementPage] || LEGAL_DOCS.terms},
+		myId(){return this.me?this.me.id:null},
+		myName(){return this.me?this.me.name:''},
+		myInitial(){return this.myName?this.myName.slice(0,1):'我'},
+		myPhone(){return this.me?.phone||''},
+		myStepCount(){return Number(this.me?.stepCount||0)},
+		storeReference(){const date=new Date(this.currentMoment+this.storeOffset*60000);return new Date(date.getUTCFullYear(),date.getUTCMonth(),date.getUTCDate(),12)},
+		dailyReceipts(){return this.receiptReport?.today||todayPaymentTotals(this.receipts,this.receiptDate)},
+		sevenDayReceipts(){return this.receiptReport?.days||paymentTotalsByDay(this.receipts,7,this.storeReference)},
 		greetingText(){return greetingForDate(new Date(this.currentMoment))},
 		managerOverviewTitle(){return overviewForDate(new Date(this.currentMoment))},
 		themeOptions(){return this.themes.filter(theme=>!theme.deleted).map(theme=>theme.name)},
@@ -311,7 +359,14 @@ export default {
 		pendingRepairCount(){return this.repairs.filter(repair=>repair.status==='pending').length},
 		pendingRepairBadge(){return this.pendingRepairCount>99?'99+':String(this.pendingRepairCount||'')},
 		workspaceState(){return{themes:this.themes,tasks:this.tasks,repairs:this.repairs}},
-		workspaceContext(){return{role:this.role,name:this.actor(),active:this.role==='manager'||this.activeStaff.some(staff=>staff.name===this.actor()),storeId:'jiuhuicheng'}},
+		workspaceContext(){return{role:this.role,name:this.actor(),active:this.role==='manager'||this.me?.status!=='inactive',storeId:this.storeCode}},
+		workspaceActions(){return{
+			createRepair:form=>storeApi.createRepair(form.themeId,form.problem,newRequestId()),
+			completeRepair:id=>storeApi.completeRepair(id),
+			saveTask:draft=>{const task={title:draft.title,points:String(draft.points??'').trim(),category:draft.category,audit:Boolean(draft.audit)};return draft.id?storeApi.updateTask(draft.id,task):storeApi.addTask(task)},
+			saveTheme:draft=>draft.id?storeApi.renameTheme(draft.id,draft.name):storeApi.addTheme(draft.name),
+			deleteTheme:id=>storeApi.deleteTheme(id)
+		}},
 		currentTabs(){return this.role==='employee'?[{id:'home',label:'首页',icon:'⌂'},{id:'points',label:'积分',icon:'◇'},{id:'grab',label:'抢单',icon:'⚡',badge:this.openJobs.length||''},{id:'orders',label:'订单',icon:'☷'},{id:'me',label:'我的',icon:'○'}]:[{id:'dashboard',label:'概览',icon:'⌂'},{id:'review',label:'审核',icon:'✓',badge:this.pendingAudits.length||''},{id:'publish',label:'发布',icon:'＋'},{id:'orders',label:'订单',icon:'☷'},{id:'managerMe',label:'我的',icon:'○'}]},
 		currentTitle(){const found=this.currentTabs.find(t=>t.id===this.activeTab);return found?found.label:'暗格门店'},
 		unreadCount(){return this.notifications.filter(i=>!i.read).length},
@@ -319,14 +374,14 @@ export default {
 		inactiveStaff(){return this.ranking.filter(person=>person.status==='inactive')},
 		rankedStaff(){return[...this.activeStaff].sort((a,b)=>b.points-a.points)},
 		staffByStatus(){return[...this.ranking].sort((a,b)=>{if(a.status!==b.status)return a.status==='active'?-1:1;return b.points-a.points})},
-		myRank(){const index=this.rankedStaff.findIndex(person=>person.name==='林澈');return index<0?'—':index+1},
-		employeePointLedger(){return employeePointEntries(this.pointLedger,'林澈',new Date(this.currentMoment))},
-		staffLedgerEntries(){return this.ledgerStaff?employeePointEntries(this.pointLedger,this.ledgerStaff.name,new Date(this.currentMoment)):[]},
+		myRank(){const index=this.rankedStaff.findIndex(person=>person.id===this.myId);return index<0?'—':index+1},
+		employeePointLedger(){return prunePointLedger(this.pointLedger.filter(entry=>entry.employeeId===undefined?entry.employee===this.myName:entry.employeeId===this.myId),new Date(this.currentMoment))},
+		staffLedgerEntries(){return this.ledgerStaff?employeePointEntries(this.staffLedger,this.ledgerStaff.name,new Date(this.currentMoment)):[]},
 		totalStaffPoints(){return this.activeStaff.reduce((sum,person)=>sum+Number(person.points||0),0)},
 		totalStaffTasks(){return this.activeStaff.reduce((sum,person)=>sum+Number(person.tasks||0),0)},
-		openJobs(){return this.jobs.filter(job=>job.status==='open'&&(this.role==='manager'||this.canEmployeeSeeJob(job,'林澈')))},
-		visibleJobs(){return this.jobView==='open'?this.openJobs:this.jobs.filter(job=>job.claimedBy==='林澈')},
-		myCompletedJobs(){return this.jobs.filter(j=>j.claimedBy==='林澈').length},
+		openJobs(){return this.jobs.filter(job=>job.status==='open'&&(this.role==='manager'||this.canEmployeeSeeJob(job)))},
+		visibleJobs(){return this.jobView==='open'?this.openJobs:this.jobs.filter(job=>this.isMyJob(job))},
+		myCompletedJobs(){return this.me&&this.me.grabCount!==undefined?this.me.grabCount:this.jobs.filter(job=>this.isMyJob(job)).length},
 		taskFilters(){return [{id:'all',label:'全部'},...['接待','服务','维护','打扫','整理','视频','出勤'].map(x=>({id:x,label:x}))]}, filteredTasks(){return this.taskFilter==='all'?this.tasks:this.tasks.filter(t=>t.category===this.taskFilter)},
 		orderFilters(){const filters=[{id:'all',label:'全部'},{id:'active',label:'进行中'},{id:'editing',label:'待剪辑'}];return this.role==='manager'?[...filters,{id:'done',label:'已完成'}]:filters},
 		roleOrders(){return filterOrdersForRole(this.orders,this.role)},
@@ -336,34 +391,179 @@ export default {
 	},
 	watch: {
 		role(){this.ensureOrderVisibility()},
-		receipts:{handler(){this.queuePersist()},deep:true},
-		themes:{handler(){this.queuePersist()},deep:true},
-		repairs:{handler(){this.queuePersist()},deep:true},
-		employeePoints(){this.queuePersist()},
-		todayPoints(){this.queuePersist()},
-		lastPointDate(){this.queuePersist()},
-		tasks:{handler(){this.queuePersist()},deep:true},
-		pointLedger:{handler(){this.queuePersist()},deep:true},
-		ranking:{handler(){this.queuePersist()},deep:true},
-		jobs:{handler(){this.queuePersist()},deep:true},
-		orders:{handler(){this.ensureOrderVisibility();this.queuePersist()},deep:true},
-		editingTasks:{handler(){this.queuePersist()},deep:true},
-		pendingAudits:{handler(){this.queuePersist()},deep:true},
-		auditHistory:{handler(){this.queuePersist()},deep:true},
-		notifications:{handler(){this.queuePersist()},deep:true},
-		wechatSubscriptionEnabled(){this.queuePersist()}
+		orders:{handler(){this.ensureOrderVisibility()},deep:true}
 	},
-	onLoad(){this.updateNavigationLayout();this.rolloverDailyPoints();this.prunePointHistory();this.updateClock();this.timer=setInterval(this.updateClock,1000)},
+	onLoad(){this.updateNavigationLayout();this.updateClock();this.timer=setInterval(this.updateClock,1000);onUnauthorized(message=>this.handleSessionExpired(message));this.restoreSession()},
 	onReady(){this.updateNavigationLayout()},
 	onResize(){this.updateNavigationLayout()},
-	onShow(){this.updateNavigationLayout();this.rolloverDailyPoints();this.prunePointHistory();this.ensureOrderVisibility()},
-	onHide(){this.persistNow()},
-	onUnload(){clearInterval(this.timer);clearTimeout(this.persistTimer);this.persistNow()},
+	onShow(){this.updateNavigationLayout();this.startPolling();this.rolloverDailyPoints();this.ensureOrderVisibility()},
+	onHide(){this.stopPolling();this.persistNow()},
+	onUnload(){clearInterval(this.timer);this.stopPolling()},
 	methods: {
+		openAgreement(kind){this.agreementPage=kind},
 		updateNavigationLayout(){
 			// #ifdef MP-WEIXIN
 			this.navigationStyle = readWechatNavigationStyle(uni)
 			// #endif
+		},
+		// ---------------------------------------------------------------- 登录与同步
+		restoreSession(){
+			if(!getToken()){this.sessionChecked=true;return Promise.resolve()}
+			const cached=loadCachedSnapshot()
+			if(cached)this.applySnapshot(cached)
+			return this.refresh(true).finally(()=>{this.sessionChecked=true;this.startPolling()})
+		},
+		async login(){
+			if(!this.agreed){uni.showToast({title:'请先阅读并同意协议',icon:'none'});return}
+			const phone=String(this.loginForm.phone||'').replace(/\s+/g,''),password=this.loginForm.password||''
+			if(!/^1\d{10}$/.test(phone)){uni.showToast({title:'请填写11位手机号',icon:'none'});return}
+			if(!password){uni.showToast({title:'请填写密码',icon:'none'});return}
+			if(this.loginPending)return
+			this.loginPending=true
+			try{
+				const data=await storeApi.login(phone,password)
+				this.resetSession()
+				setToken(data.token)
+				// 数据到了再关闭登录页，避免先看到一闪而过的空白首页
+				if(!await this.refresh(true)){this.me=data.me;this.role=data.me.role==='manager'?'manager':'employee'}
+				this.activeTab=this.role==='employee'?'home':'dashboard'
+				this.loginForm={phone,password:''}
+				this.startPolling()
+				uni.showToast({title:'登录成功',icon:'success'})
+			}catch(error){uni.showToast({title:error.message,icon:'none'})}
+			finally{this.loginPending=false;this.sessionChecked=true}
+		},
+		confirmLogout(){uni.showModal({title:'退出登录',content:'退出后需要重新输入手机号和密码。',confirmText:'退出',confirmColor:'#e4615a',success:res=>{if(res.confirm)this.logout()}})},
+		async logout(){
+			try{await storeApi.logout()}catch{/* 已离线也允许退出 */}
+			this.resetSession()
+			uni.showToast({title:'已退出登录',icon:'none'})
+		},
+		handleSessionExpired(message){
+			if(!this.me)return
+			this.resetSession()
+			uni.showToast({title:message||'登录已失效，请重新登录',icon:'none'})
+		},
+		resetSession(){
+			setToken('');clearCachedSnapshot();this.stopPolling()
+			Object.assign(this,createEmptyAppState())
+			Object.assign(this,{me:null,syncVersion:'',storeDate:'',staffLedger:[],role:'employee',activeTab:'home',orderFilter:'all',pointView:'tasks',jobView:'open',reviewView:'pending'})
+			this.closeOverlays()
+		},
+		closeOverlays(){
+			Object.assign(this,{selectedOrder:null,showOrderMenu:false,orderFormVisible:false,editingOrderId:null,correctionVisible:false,correctionOrder:null,
+				staffManagementVisible:false,staffActionVisible:false,selectedStaff:null,staffLedgerVisible:false,ledgerStaff:null,
+				notificationsVisible:false,workspaceVisible:false,passwordVisible:false})
+		},
+		openMyPage(){if(!this.me)return;this.activeTab=this.role==='employee'?'me':'managerMe'},
+		startPolling(){this.stopPolling();if(!getToken())return;this.pollTimer=setInterval(()=>this.refresh(false),POLL_INTERVAL)},
+		stopPolling(){if(this.pollTimer)clearInterval(this.pollTimer);this.pollTimer=null},
+		async refresh(force=false){
+			if(!getToken())return false
+			if(this.syncing){this.syncQueued=this.syncQueued||force;return false}
+			this.syncing=true
+			try{
+				if(!force&&this.syncVersion){
+					const {version}=await storeApi.version()
+					if(version===this.syncVersion)return false
+				}
+				return this.applySnapshot(await storeApi.sync())
+			}catch(error){
+				if(force&&error.status!==401)uni.showToast({title:error.message,icon:'none'})
+				return false
+			}finally{
+				this.syncing=false
+				if(this.syncQueued){this.syncQueued=false;this.refresh(true)}
+			}
+		},
+		applySnapshot(snapshot){
+			if(!snapshot||!snapshot.state||!snapshot.me)return false
+			const sameUser=this.me&&this.me.id===snapshot.me.id
+			if(sameUser&&!isSameOrNewerVersion(snapshot.version,this.syncVersion))return false
+			const previousOrders=this.orders
+			const state=normaliseSnapshotState(snapshot.state,new Date(this.currentMoment))
+			for(const key of STATE_KEYS)this[key]=state[key]
+			this.me=snapshot.me
+			const role=snapshot.me.role==='manager'?'manager':'employee'
+			if(role!==this.role)this.role=role
+			const store=snapshot.store||{}
+			this.storeName=store.name||STORE_NAME
+			this.storeCode=store.code||STORE_CODE
+			this.storeDate=store.date||''
+			if(Number.isFinite(store.utcOffsetMinutes))this.storeOffset=store.utcOffsetMinutes
+			this.receiptDate=this.receiptReport?.date||this.storeDate||this.receiptDate
+			this.syncVersion=snapshot.version||''
+			this.ensureTabForRole()
+			this.rebindSelections(previousOrders)
+			saveCachedSnapshot(snapshot)
+			return true
+		},
+		ensureTabForRole(){
+			if(this.role==='employee'&&MANAGER_TABS.includes(this.activeTab))this.activeTab='home'
+			if(this.role==='manager'&&EMPLOYEE_TABS.includes(this.activeTab))this.activeTab='dashboard'
+		},
+		// 整包数据替换后，把正在查看的订单、员工等指向新数据；已经不存在的就关掉
+		rebindSelections(previousOrders=[]){
+			if(this.selectedOrder){
+				const next=this.orders.find(order=>order.id===this.selectedOrder.id)
+				if(next)this.selectedOrder=next
+				else{
+					const before=previousOrders.find(order=>order.id===this.selectedOrder.id)||this.selectedOrder
+					const finishing=['video','edit'].includes(nextOrderStep(before).key)
+					this.hideOrderViews(this.role==='employee'&&finishing?'订单已完成，已从员工端隐藏':'该订单已被删除')
+				}
+			}
+			if(this.orderFormVisible&&this.orderFormMode==='edit'&&!this.orders.some(order=>order.id===this.editingOrderId)){
+				this.orderFormVisible=false;this.editingOrderId=null
+			}
+			if(this.correctionOrder){
+				const next=this.orders.find(order=>order.id===this.correctionOrder.id)
+				if(next)this.correctionOrder=next
+				else{this.correctionVisible=false;this.correctionOrder=null}
+			}
+			if(this.selectedStaff){
+				const next=this.ranking.find(person=>person.id===this.selectedStaff.id)
+				if(next)this.selectedStaff=next
+				else this.closeStaffActions()
+			}
+			if(this.ledgerStaff){
+				const next=this.ranking.find(person=>person.id===this.ledgerStaff.id)
+				if(next)this.ledgerStaff=next
+				else this.closeStaffLedger()
+			}
+		},
+		hideOrderViews(message){
+			this.selectedOrder=null;this.showOrderMenu=false;this.orderFormVisible=false;this.editingOrderId=null
+			if(this.role==='employee'){this.activeTab='orders';this.orderFilter='all'}
+			if(message)uni.showToast({title:message,icon:'none'})
+		},
+		// 统一的写操作：防连点、提交、用返回的最新数据刷新页面、提示结果
+		async runAction(task,{success,icon='success',after}={}){
+			if(!this.me){uni.showToast({title:'请先登录',icon:'none'});return null}
+			if(this.busy){uni.showToast({title:'正在处理上一步，请稍候',icon:'none'});return null}
+			this.busy=true
+			const known=new Set(this.notifications.map(item=>item.id))
+			try{
+				const data=await task()
+				const title=typeof success==='function'?success(data):success
+				if(title)uni.showToast({title,icon:typeof icon==='function'?icon(data):icon})
+				// 先提示结果再换数据：订单完成后「已从员工端隐藏」的提示会接着出现
+				if(data&&data.snapshot){this.applySnapshot(data.snapshot);this.forwardNewNotices(known)}
+				if(after)after(data)
+				return data||{}
+			}catch(error){
+				if(error.status!==401){
+					uni.showToast({title:error.message,icon:'none'})
+					if(error.status===404||error.status===409)this.refresh(true)
+				}
+				return null
+			}finally{this.busy=false}
+		},
+		// 全店可见的消息同时推送微信提醒（未配置订阅时静默跳过）
+		forwardNewNotices(known){
+			for(const item of this.notifications){
+				if(!known.has(item.id)&&item.audience==='all')this.deliverWechatReminder(item)
+			}
 		},
 		canViewOrder(order){return roleCanViewOrder(order,this.role)},
 		ensureOrderVisibility(){
@@ -371,9 +571,7 @@ export default {
 			if(this.orderFilter==='done')this.orderFilter='all'
 			const editing=this.orderFormVisible&&this.orderFormMode==='edit'?this.orders.find(order=>order.id===this.editingOrderId):null
 			if(![this.selectedOrder,editing].some(order=>order&&!this.canViewOrder(order)))return
-			this.selectedOrder=null;this.showOrderMenu=false;this.orderFormVisible=false;this.editingOrderId=null
-			this.activeTab='orders';this.orderFilter='all'
-			uni.showToast({title:'订单已完成，已从员工端隐藏',icon:'none'})
+			this.hideOrderViews('订单已完成，已从员工端隐藏')
 		},
 		money:formatMoney,
 		receiptSummary:paymentSummary,
@@ -383,97 +581,137 @@ export default {
 			try{amounts=parsePaymentAmounts(input)}catch(error){uni.showToast({title:error.message,icon:'none'});return}
 			uni.showModal({title:this.receiptFor(order)?'确认修改收款金额':'确认已收到款项',content:`${order.theme}\n${paymentSummary({amounts})}\n请核对实际收款，确认后将推进到带场节点。`,confirmText:'确认',success:result=>{
 				if(!result.confirm)return
-				const previousReceipts=[...this.receipts],previousRecord=order.records.payment
-				try{
-					recordOrderPayment(this,order,this.workspaceContext,input)
-					if(!this.persistNow()){this.receipts=previousReceipts;if(previousRecord)order.records.payment=previousRecord;else delete order.records.payment;throw new Error('保存失败，请重试收款登记')}
-					this.receiptDate=paymentDateKey();uni.showToast({title:'收款已登记',icon:'success'})
-				}catch(error){uni.showToast({title:error.message,icon:'none'})}
+				this.runAction(()=>storeApi.recordPayment(order.id,{...input}),{success:data=>data.revised?'收款金额已修改':'收款已登记'})
 			}})
 		},
-		openWorkspace(mode='repairs'){if(mode!=='repairs'&&!this.requireRole('manager'))return;this.workspaceMode=mode;this.workspaceVisible=true},
-		saveWorkspaceChange(message){const saved=this.persistNow();uni.showToast({title:saved?message:'保存失败，请勿退出并重试',icon:saved?'success':'none'})},
-		updateClock(){const d=new Date();this.currentMoment=d.getTime();this.receiptDate=paymentDateKey(d);this.liveTime=[d.getHours(),d.getMinutes(),d.getSeconds()].map(x=>String(x).padStart(2,'0')).join(':')},
+		openWorkspace(mode='repairs'){if(!this.me)return;if(mode!=='repairs'&&!this.requireRole('manager'))return;this.workspaceMode=mode;this.workspaceVisible=true},
+		saveWorkspaceChange(message,data){if(data&&data.snapshot)this.applySnapshot(data.snapshot);uni.showToast({title:message,icon:'success'})},
+		updateClock(){const d=new Date();this.currentMoment=d.getTime();this.liveTime=[d.getHours(),d.getMinutes(),d.getSeconds()].map(x=>String(x).padStart(2,'0')).join(':')},
 		now(){return nowTimestamp()},
 		formatTime(value){return formatDateTime(value,new Date(this.currentMoment))},
-		formatDate(value){return formatDateLabel(value,new Date(this.currentMoment))},
+		formatDate(value){const key=String(value||'').match(/^(\d{4})-(\d{2})-(\d{2})$/);return key?`${Number(key[2])}月${Number(key[3])}日`:formatDateLabel(value,new Date(this.currentMoment))},
 		dateKey(date=new Date()){return localDateKey(date)},
-		rolloverDailyPoints(){if(rolloverDailyPointState(this,this.dateKey()))this.persistNow()},
-		prunePointHistory(){const pruned=prunePointLedger(this.pointLedger,new Date(this.currentMoment));if(JSON.stringify(pruned)!==JSON.stringify(this.pointLedger)){this.pointLedger=pruned;this.persistNow()}},
-		actor(){return this.role==='employee'?'林澈':'江店长'},
-		queuePersist(){clearTimeout(this.persistTimer);this.persistTimer=setTimeout(()=>this.persistNow(),120)},
-		persistNow(){clearTimeout(this.persistTimer);this.persistTimer=null;return saveAppState(this)},
-		requireRole(expected){if(this.role!==expected){uni.showToast({title:expected==='manager'?'仅店长可以操作':'请切换到员工端操作',icon:'none'});return false}if(expected==='employee'){const current=this.ranking.find(item=>item.name==='林澈');if(!current||current.status==='inactive'){uni.showToast({title:current?'员工账号已停用':'员工账号已删除',icon:'none'});return false}}return true},
-		syncMyRanking(taskDelta=0){const me=this.ranking.find(item=>item.name==='林澈');if(!me)return;me.points=this.employeePoints;me.tasks+=taskDelta},
-		switchRole(){this.role=this.role==='employee'?'manager':'employee';this.activeTab=this.role==='employee'?'home':'dashboard';uni.showToast({title:this.role==='employee'?'已切换员工端':'已切换店长端',icon:'none'})},
+		currentStoreDate(){const d=new Date(this.currentMoment+this.storeOffset*60000);return `${d.getUTCFullYear()}-${pad(d.getUTCMonth()+1)}-${pad(d.getUTCDate())}`},
+		// 跨天后「今日积分」「今日收款」由门店系统按门店日期重新计算，这里只负责及时刷新
+		rolloverDailyPoints(){if(!this.me)return;this.refresh(Boolean(this.storeDate)&&this.currentStoreDate()!==this.storeDate)},
+		prunePointHistory(){this.pointLedger=prunePointLedger(this.pointLedger,new Date(this.currentMoment))},
+		actor(){return this.myName},
+		queuePersist(){},
+		persistNow(){
+			if(!this.me)return false
+			const state={}
+			for(const key of STATE_KEYS)state[key]=this[key]
+			return saveCachedSnapshot({version:this.syncVersion,store:{name:this.storeName,code:this.storeCode,date:this.storeDate,utcOffsetMinutes:this.storeOffset},me:this.me,state})
+		},
+		requireRole(expected){
+			if(!this.me){uni.showToast({title:'请先登录',icon:'none'});return false}
+			if(this.role!==expected){uni.showToast({title:expected==='manager'?'仅店长可以操作':'请使用员工账号操作',icon:'none'});return false}
+			if(expected==='employee'&&this.me.status==='inactive'){uni.showToast({title:'员工账号已停用',icon:'none'});return false}
+			return true
+		},
+		isMyJob(job){return job.claimedById!==undefined&&job.claimedById!==null?job.claimedById===this.myId:job.claimedBy===this.myName},
 		openNotifications(){this.notificationsVisible=true},
-		readNotification(item){item.read=true},
-		markAllRead(){this.notifications.forEach(n=>n.read=true);uni.showToast({title:'已全部标记为已读',icon:'none'})},
-		pushNotification(title,detail,type='info',icon='•'){const item={id:Date.now(),title,detail,time:this.now(),type,icon,read:false};this.notifications.unshift(item);this.deliverWechatReminder(item);return item},
-		deliverWechatReminder(item){publishWechatNotification(typeof wx!=='undefined'?wx:uni,{...item,storeId:'jiuhuicheng',storeName:this.storeName}).catch(()=>{})},
-		enableWechatReminders(){const api=typeof wx!=='undefined'?wx:uni;const templateIds=configuredTemplateIds();requestWechatSubscription(api,templateIds).then(result=>{const acceptedIds=templateIds.filter(id=>result[id]==='accept');if(!acceptedIds.length)throw new Error('未允许微信订阅提醒');return registerWechatSubscriber(api,{storeId:'jiuhuicheng',storeName:this.storeName,name:this.actor(),role:this.role},acceptedIds)}).then(()=>{this.wechatSubscriptionEnabled=true;this.persistNow();uni.showToast({title:'微信提醒已开启',icon:'success'})}).catch(error=>{uni.showModal({title:'微信提醒未开启',content:error.message||'请稍后重试',showCancel:false})})},
+		readNotification(item){if(item.read)return;item.read=true;storeApi.readNotice(item.id).catch(()=>{item.read=false})},
+		markAllRead(){this.notifications.forEach(n=>n.read=true);uni.showToast({title:'已全部标记为已读',icon:'none'});storeApi.readAllNotices().then(data=>{if(data&&data.snapshot)this.applySnapshot(data.snapshot)}).catch(()=>this.refresh(true))},
+		deliverWechatReminder(item){publishWechatNotification(typeof wx!=='undefined'?wx:uni,{...item,storeId:this.storeCode,storeName:this.storeName}).catch(()=>{})},
+		enableWechatReminders(){const api=typeof wx!=='undefined'?wx:uni;const templateIds=configuredTemplateIds();requestWechatSubscription(api,templateIds).then(result=>{const acceptedIds=templateIds.filter(id=>result[id]==='accept');if(!acceptedIds.length)throw new Error('未允许微信订阅提醒');return registerWechatSubscriber(api,{storeId:this.storeCode,storeName:this.storeName,name:this.actor(),role:this.role},acceptedIds)}).then(()=>storeApi.setWechatSubscription(true)).then(data=>{if(data&&data.snapshot)this.applySnapshot(data.snapshot);this.wechatSubscriptionEnabled=true;uni.showToast({title:'微信提醒已开启',icon:'success'})}).catch(error=>{uni.showModal({title:'微信提醒未开启',content:error.message||'请稍后重试',showCancel:false})})},
+		// ---------------------------------------------------------------- 修改密码
+		openPasswordForm(){if(!this.me)return;this.passwordForm={oldPassword:'',newPassword:'',confirmPassword:''};this.passwordVisible=true},
+		submitPassword(){
+			const form=this.passwordForm
+			if(!form.oldPassword){uni.showToast({title:'请填写原密码',icon:'none'});return}
+			if(String(form.newPassword||'').length<6){uni.showToast({title:'新密码至少6位',icon:'none'});return}
+			if(form.newPassword!==form.confirmPassword){uni.showToast({title:'两次输入的新密码不一致',icon:'none'});return}
+			this.runAction(()=>storeApi.changePassword(form.oldPassword,form.newPassword),{success:'密码已修改',after:data=>{if(data.token)setToken(data.token);this.passwordVisible=false}})
+		},
+		// ---------------------------------------------------------------- 员工管理（店长）
 		openStaffManagement(view='manage'){if(!this.requireRole('manager'))return;this.staffView=view;this.staffManagementVisible=true;this.staffActionVisible=false;this.selectedStaff=null},
 		closeStaffManagement(){this.staffManagementVisible=false;this.staffActionVisible=false;this.selectedStaff=null},
 		openStaffActions(person){if(!this.requireRole('manager'))return;this.selectedStaff=person;this.staffActionVisible=true},
 		closeStaffActions(){this.staffActionVisible=false;this.selectedStaff=null},
-		openStaffLedger(person){if(!this.requireRole('manager'))return;this.ledgerStaff=person;this.staffLedgerVisible=true;this.staffActionVisible=false},
-		closeStaffLedger(){this.staffLedgerVisible=false;this.ledgerStaff=null},
+		openStaffLedger(person){
+			if(!this.requireRole('manager'))return
+			this.ledgerStaff=person;this.staffLedger=[];this.staffLedgerVisible=true;this.staffActionVisible=false
+			storeApi.staffLedger(person.id).then(list=>{if(this.ledgerStaff&&this.ledgerStaff.id===person.id)this.staffLedger=list}).catch(error=>uni.showToast({title:error.message,icon:'none'}))
+		},
+		closeStaffLedger(){this.staffLedgerVisible=false;this.ledgerStaff=null;this.staffLedger=[]},
 		canRevokePoint(entry){return canRevokePointEntry(entry)},
-		revokeStaffPoint(entry){if(!this.requireRole('manager'))return;uni.showModal({title:'撤销员工积分',content:`确认撤销 ${entry.employee} 的“${entry.title}” +${entry.points} 分？撤销后总积分会同步扣减。`,confirmText:'确认撤销',confirmColor:'#e4615a',success:res=>{if(!res.confirm)return;try{const result=revokePointEntry(this,this.workspaceContext,entry.id);this.pushNotification('员工积分已撤销',`${entry.employee} · ${entry.title} · 扣减 ${result.removed} 分`,'audit','↶');this.persistNow();uni.showToast({title:'积分已撤销',icon:'success'})}catch(error){uni.showToast({title:error.message,icon:'none'})}}})},
-		removeStaffAccount(person){if(!this.requireRole('manager'))return;uni.showModal({title:'删除员工账号',content:`确认删除 ${person.name}？该员工的 ${person.points} 分将从团队总积分中移除，待审核任务同时取消。此操作不能恢复。`,confirmText:'确认删除',confirmColor:'#e4615a',success:res=>{if(!res.confirm)return;try{const result=deleteEmployeeAccount(this,this.workspaceContext,person.id);this.pushNotification('员工账号已删除',`${result.person.name} · 团队总积分减少 ${result.removedPoints} 分`,'audit','×');this.staffActionVisible=false;this.selectedStaff=null;this.persistNow();uni.showToast({title:'员工账号已删除',icon:'none'})}catch(error){uni.showToast({title:error.message,icon:'none'})}}})},
-		addStaff(){if(!this.requireRole('manager'))return;uni.showModal({title:'添加员工',editable:true,placeholderText:'请输入员工姓名',confirmText:'确认添加',success:res=>{if(!res.confirm)return;const name=(res.content||'').trim();if(!name){uni.showToast({title:'请输入员工姓名',icon:'none'});return}if(this.ranking.some(person=>person.name===name)){uni.showToast({title:'该员工已存在',icon:'none'});return}this.ranking.push({id:`staff-${Date.now()}`,name,points:0,tasks:0,status:'active'});this.staffView='manage';this.pushNotification('员工已添加',`${name} 已加入长乐路店`,'info','＋');uni.showToast({title:'员工添加成功',icon:'success'})}})},
-		adjustStaffPoints(person){if(!this.requireRole('manager'))return;uni.showModal({title:`调整${person.name}的积分`,editable:true,placeholderText:'输入调整值，例如 10 或 -5',confirmText:'确认调整',success:res=>{if(!res.confirm)return;const requested=Number((res.content||'').trim());if(!Number.isFinite(requested)||!Number.isInteger(requested)||requested===0){uni.showToast({title:'请输入非零整数',icon:'none'});return}const before=Math.max(0,Number(person.points||0));person.points=Math.max(0,before+requested);const delta=person.points-before;if(!delta){uni.showToast({title:'当前积分已为 0，无法继续扣减',icon:'none'});return}if(person.name==='林澈')this.employeePoints=person.points;addPointEntry(this,{employee:person.name,title:'店长手动调整积分',points:delta,state:'已到账',source:'manual'});this.pushNotification('员工积分已调整',`${person.name} ${delta>0?'+':''}${delta} 分，当前 ${person.points} 分`,'audit','◇');this.staffActionVisible=false;this.selectedStaff=null;uni.showToast({title:'积分已更新',icon:'success'})}})},
-		toggleStaffStatus(person){if(!this.requireRole('manager'))return;const willDisable=person.status!=='inactive';uni.showModal({title:willDisable?'停用员工':'恢复员工',content:willDisable?`停用后，${person.name} 将不能领取积分任务或抢单。`:`恢复后，${person.name} 可以继续参与门店任务。`,confirmText:willDisable?'确认停用':'确认恢复',confirmColor:willDisable?'#e4615a':'#e9aa3a',success:res=>{if(!res.confirm)return;person.status=willDisable?'inactive':'active';if(willDisable)this.jobs.forEach(job=>{if(job.status==='open'&&job.restricted)job.allowedEmployees=job.allowedEmployees.filter(name=>name!==person.name)});this.pushNotification(willDisable?'员工已停用':'员工已恢复',`${person.name} · ${willDisable?'暂停门店任务权限':'恢复门店任务权限'}`,'audit',willDisable?'×':'✓');this.staffActionVisible=false;this.selectedStaff=null;uni.showToast({title:willDisable?'员工已停用':'员工已恢复',icon:'none'})}})},
-		tapPointTask(task){
-			if(!this.requireRole('employee'))return
-			const snapshot={title:task.title,points:task.points,audit:task.audit}
-			const content=snapshot.audit?`提交“${snapshot.title}”后将等待店长审核，通过后获得 ${snapshot.points} 积分。`:`确认已完成“${snapshot.title}”？${snapshot.points} 积分将立即到账。`
-			uni.showModal({title:snapshot.audit?'提交审核':'确认完成',content,confirmText:snapshot.audit?'提交':'完成',success:res=>{
-				if(!res.confirm||!this.requireRole('employee'))return
-				this.rolloverDailyPoints()
-				task.count=(task.count||0)+1
-				const id=`point-${Date.now()}-${Math.random().toString(36).slice(2,7)}`
-				if(snapshot.audit){
-					const occurredAt=this.now();this.pendingAudits.push({id,employee:'林澈',title:snapshot.title,points:snapshot.points,submittedAt:occurredAt})
-					addPointEntry(this,{id,employee:'林澈',occurredAt,title:snapshot.title,points:snapshot.points,state:'待审核',source:'audit'})
-					this.pushNotification('打扫任务待审核',`林澈提交“${snapshot.title}”`,'audit','✓')
-					uni.showToast({title:'已提交店长审核',icon:'none'})
-				}else{
-					this.employeePoints+=snapshot.points;this.todayPoints+=snapshot.points;this.syncMyRanking(1)
-					addPointEntry(this,{id,employee:'林澈',title:snapshot.title,points:snapshot.points,state:'已到账',source:'task'})
-					this.pushNotification('积分已到账',`${snapshot.title} +${snapshot.points} 分`,'success','+')
-					uni.showToast({title:`+${snapshot.points} 积分`,icon:'success'})
-				}
-				this.persistNow()
+		revokeStaffPoint(entry){if(!this.requireRole('manager'))return;uni.showModal({title:'撤销员工积分',content:`确认撤销 ${entry.employee} 的“${entry.title}” +${entry.points} 分？撤销后总积分会同步扣减。`,confirmText:'确认撤销',confirmColor:'#e4615a',success:res=>{if(!res.confirm)return;this.runAction(()=>storeApi.revokePoint(entry.id),{success:'积分已撤销',after:data=>{if(this.ledgerStaff&&data.staffId===this.ledgerStaff.id)this.staffLedger=data.ledger||[]}})}})},
+		removeStaffAccount(person){if(!this.requireRole('manager'))return;uni.showModal({title:'删除员工账号',content:`确认删除 ${person.name}？该员工的 ${person.points} 分将从团队总积分中移除，待审核任务同时取消。此操作不能恢复。`,confirmText:'确认删除',confirmColor:'#e4615a',success:res=>{if(!res.confirm)return;this.runAction(()=>storeApi.removeStaff(person.id),{success:'员工账号已删除',icon:'none',after:()=>{this.staffActionVisible=false;this.selectedStaff=null}})}})},
+		addStaff(){
+			if(!this.requireRole('manager'))return
+			uni.showModal({title:'添加员工',editable:true,placeholderText:'请输入员工姓名',confirmText:'下一步',success:res=>{
+				if(!res.confirm)return
+				const name=(res.content||'').trim()
+				if(!name){uni.showToast({title:'请输入员工姓名',icon:'none'});return}
+				if(this.ranking.some(person=>person.name===name)){uni.showToast({title:'该员工已存在',icon:'none'});return}
+				setTimeout(()=>uni.showModal({title:`${name}的登录手机号`,editable:true,placeholderText:'请输入11位手机号',confirmText:'确认添加',success:second=>{
+					if(!second.confirm)return
+					const phone=String(second.content||'').replace(/\s+/g,'')
+					if(!/^1\d{10}$/.test(phone)){uni.showToast({title:'请填写11位手机号',icon:'none'});return}
+					this.runAction(()=>storeApi.addStaff(name,phone),{after:data=>{
+						this.staffView='manage'
+						uni.showModal({title:'员工添加成功',content:`${data.name} 的登录手机号：${data.phone}\n初始密码：${data.initialPassword}\n请当面告知员工，登录后可在「我的」中修改密码。`,showCancel:false,confirmText:'我已告知'})
+					}})
+				}}),300)
 			}})
 		},
+		resetStaffPassword(person){
+			if(!this.requireRole('manager'))return
+			uni.showModal({title:'重置登录密码',content:`重置后 ${person.name} 需要用新密码重新登录，原来的登录会全部退出。`,confirmText:'确认重置',success:res=>{
+				if(!res.confirm)return
+				this.runAction(()=>storeApi.resetStaffPassword(person.id),{after:data=>{
+					this.staffActionVisible=false;this.selectedStaff=null
+					uni.showModal({title:'密码已重置',content:`${data.name} 的登录手机号：${data.phone}\n新密码：${data.password}\n请当面告知，登录后可自行修改。`,showCancel:false,confirmText:'我已告知'})
+				}})
+			}})
+		},
+		adjustStaffPoints(person){if(!this.requireRole('manager'))return;uni.showModal({title:`调整${person.name}的积分`,editable:true,placeholderText:'输入调整值，例如 10 或 -5',confirmText:'确认调整',success:res=>{if(!res.confirm)return;const requested=Number((res.content||'').trim());if(!Number.isFinite(requested)||!Number.isInteger(requested)||requested===0){uni.showToast({title:'请输入非零整数',icon:'none'});return}const before=Math.max(0,Number(person.points||0));if(Math.max(0,before+requested)===before){uni.showToast({title:'当前积分已为 0，无法继续扣减',icon:'none'});return}this.runAction(()=>storeApi.adjustStaff(person.id,requested),{success:'积分已更新',after:()=>{this.staffActionVisible=false;this.selectedStaff=null}})}})},
+		toggleStaffStatus(person){if(!this.requireRole('manager'))return;const willDisable=person.status!=='inactive';uni.showModal({title:willDisable?'停用员工':'恢复员工',content:willDisable?`停用后，${person.name} 将立即退出登录，不能再登录、领取积分任务或抢单。`:`恢复后，${person.name} 可以重新登录并参与门店任务。`,confirmText:willDisable?'确认停用':'确认恢复',confirmColor:willDisable?'#e4615a':'#e9aa3a',success:res=>{if(!res.confirm)return;this.runAction(()=>storeApi.setStaffStatus(person.id,willDisable?'inactive':'active'),{success:willDisable?'员工已停用':'员工已恢复',icon:'none',after:()=>{this.staffActionVisible=false;this.selectedStaff=null}})}})},
+		// ---------------------------------------------------------------- 积分任务（员工）
+		tapPointTask(task){
+			if(!this.requireRole('employee'))return
+			const snapshot={id:task.id,title:task.title,points:task.points,audit:task.audit}
+			const content=snapshot.audit?`提交“${snapshot.title}”后将等待店长审核，通过后获得 ${snapshot.points} 积分。`:`确认已完成“${snapshot.title}”？${snapshot.points} 积分将立即到账。`
+			const requestId=newRequestId()
+			uni.showModal({title:snapshot.audit?'提交审核':'确认完成',content,confirmText:snapshot.audit?'提交':'完成',success:res=>{
+				if(!res.confirm||!this.requireRole('employee'))return
+				this.runAction(()=>storeApi.completeTask(snapshot.id,requestId),{success:data=>data.audit?'已提交店长审核':`+${data.points} 积分`,icon:data=>data.audit?'none':'success'})
+			}})
+		},
+		// ---------------------------------------------------------------- 临时任务
 		urgencyText(level){return{low:'普通',normal:'尽快',urgent:'紧急'}[level]},
-		canEmployeeSeeJob(job,employeeName){return!job.restricted||job.allowedEmployees.includes(employeeName)},
+		canEmployeeSeeJob(job,employeeName=this.myName){if(!job.restricted)return true;if(job.allowedEmployeeIds&&job.allowedEmployeeIds.length&&this.myId!==null&&employeeName===this.myName)return job.allowedEmployeeIds.includes(this.myId);return job.allowedEmployees.includes(employeeName)},
 		toggleJobRestriction(event){this.jobForm.restricted=event.detail.value;if(!this.jobForm.restricted)this.jobForm.allowedEmployees=[]},
 		toggleAllowedEmployee(name){const index=this.jobForm.allowedEmployees.indexOf(name);if(index>=0)this.jobForm.allowedEmployees.splice(index,1);else this.jobForm.allowedEmployees.push(name)},
-		grabJob(job){if(!this.requireRole('employee'))return;if(!this.canEmployeeSeeJob(job,'林澈')){uni.showToast({title:'该任务未向你开放',icon:'none'});return}if(job.status!=='open'){uni.showToast({title:'任务已被其他员工抢到',icon:'none'});return}uni.showModal({title:'确认抢单',content:`抢到“${job.title}”后任务立即结束，不需要再次提交。`,confirmText:'立即抢单',success:res=>{if(!res.confirm)return;if(job.status!=='open'){uni.showToast({title:'任务已被其他员工抢到',icon:'none'});return}job.status='ended';job.claimedBy='林澈';job.claimedAt=this.now();this.pushNotification('抢单成功',`林澈于 ${this.formatTime(job.claimedAt)} 抢到“${job.title}”`,'job','⚡');uni.showToast({title:'抢单成功',icon:'success'})}})},
-		publishJob(){if(!this.requireRole('manager'))return;if(!this.jobForm.title.trim()||!this.jobForm.description.trim()){uni.showToast({title:'请填写任务标题和说明',icon:'none'});return}if(this.jobForm.restricted&&!this.jobForm.allowedEmployees.length){uni.showToast({title:'请选择至少一名可抢员工',icon:'none'});return}const newJob={id:Date.now(),...this.jobForm,allowedEmployees:[...this.jobForm.allowedEmployees],publishedAt:this.now(),status:'open',claimedBy:'',claimedAt:null};this.jobs.unshift(newJob);this.pushNotification('新临时任务',`店长于 ${this.formatTime(newJob.publishedAt)} 发布“${newJob.title}”${newJob.restricted?`，仅限 ${newJob.allowedEmployees.join('、')}`:''}`,'job','⚡');this.jobForm={title:'',description:'',deadline:'',urgency:'normal',restricted:false,allowedEmployees:[]};uni.showToast({title:'发布成功',icon:'success'})},
-		cancelJob(job){if(!this.requireRole('manager'))return;uni.showModal({title:'取消任务',content:`确认取消“${job.title}”？`,confirmColor:'#e4615a',success:res=>{if(res.confirm){job.status='cancelled';this.pushNotification('临时任务已取消',job.title,'job','×')}}})},
-		approveAudit(audit){if(!this.requireRole('manager'))return;this.pendingAudits=this.pendingAudits.filter(a=>a.id!==audit.id);this.auditHistory.unshift({...audit,time:this.now(),result:'approved'});let ledger=this.pointLedger.find(item=>item.id===audit.id)||(this.pointLedger.find(item=>item.employee===audit.employee&&item.title===audit.title&&item.state==='待审核'));if(ledger){Object.assign(ledger,{employee:audit.employee,state:'已到账',source:'audit',approvedAt:this.now()})}else{ledger=addPointEntry(this,{id:audit.id,employee:audit.employee,title:audit.title,points:audit.points,state:'已到账',source:'audit'})}let staff=this.ranking.find(person=>person.name===audit.employee);if(!staff){staff={id:`staff-${Date.now()}`,name:audit.employee,points:0,tasks:0,status:'active'};this.ranking.push(staff)}staff.points=Number(staff.points||0)+audit.points;staff.tasks=Number(staff.tasks||0)+1;if(audit.employee==='林澈'){this.employeePoints=staff.points;this.todayPoints+=audit.points}this.pushNotification('打扫任务审核通过',`${audit.employee} · ${audit.title} +${audit.points} 分`,'success','✓');uni.showToast({title:'审核通过',icon:'success'})},
-		rejectAudit(audit){if(!this.requireRole('manager'))return;uni.showModal({title:'驳回任务',editable:true,placeholderText:'请输入驳回原因',confirmText:'确认驳回',confirmColor:'#e4615a',success:res=>{if(res.confirm){this.pendingAudits=this.pendingAudits.filter(a=>a.id!==audit.id);this.auditHistory.unshift({...audit,time:this.now(),result:'rejected',reason:res.content||'未通过检查'});const ledger=this.pointLedger.find(item=>item.id===audit.id)||(this.pointLedger.find(item=>item.employee===audit.employee&&item.title===audit.title&&item.state==='待审核'));if(ledger)Object.assign(ledger,{state:'已驳回',rejectedAt:this.now()});this.pushNotification('打扫任务已驳回',`${audit.employee} · ${res.content||'未通过检查'}`,'audit','×')}}})},
+		grabJob(job){if(!this.requireRole('employee'))return;if(!this.canEmployeeSeeJob(job)){uni.showToast({title:'该任务未向你开放',icon:'none'});return}if(job.status!=='open'){uni.showToast({title:'任务已被其他员工抢到',icon:'none'});return}uni.showModal({title:'确认抢单',content:`抢到“${job.title}”后任务立即结束，不需要再次提交。`,confirmText:'立即抢单',success:res=>{if(!res.confirm)return;this.runAction(()=>storeApi.grabJob(job.id),{success:'抢单成功'})}})},
+		publishJob(){
+			if(!this.requireRole('manager'))return
+			if(!this.jobForm.title.trim()||!this.jobForm.description.trim()){uni.showToast({title:'请填写任务标题和说明',icon:'none'});return}
+			if(this.jobForm.restricted&&!this.jobForm.allowedEmployees.length){uni.showToast({title:'请选择至少一名可抢员工',icon:'none'});return}
+			const allowedStaffIds=this.jobForm.restricted?this.activeStaff.filter(person=>this.jobForm.allowedEmployees.includes(person.name)).map(person=>person.id):[]
+			const form={title:this.jobForm.title,description:this.jobForm.description,deadline:this.jobForm.deadline,urgency:this.jobForm.urgency,restricted:this.jobForm.restricted,allowedStaffIds,requestId:newRequestId()}
+			this.runAction(()=>storeApi.publishJob(form),{success:'发布成功',after:()=>{this.jobForm={title:'',description:'',deadline:'',urgency:'normal',restricted:false,allowedEmployees:[]}}})
+		},
+		cancelJob(job){if(!this.requireRole('manager'))return;uni.showModal({title:'取消任务',content:`确认取消“${job.title}”？`,confirmColor:'#e4615a',success:res=>{if(res.confirm)this.runAction(()=>storeApi.cancelJob(job.id),{success:'任务已取消',icon:'none'})}})},
+		// ---------------------------------------------------------------- 打扫审核（店长）
+		approveAudit(audit){if(!this.requireRole('manager'))return;this.runAction(()=>storeApi.approveAudit(audit.id),{success:'审核通过'})},
+		rejectAudit(audit){if(!this.requireRole('manager'))return;uni.showModal({title:'驳回任务',editable:true,placeholderText:'请输入驳回原因',confirmText:'确认驳回',confirmColor:'#e4615a',success:res=>{if(res.confirm)this.runAction(()=>storeApi.rejectAudit(audit.id,res.content||''),{success:'已驳回',icon:'none'})}})},
+		// ---------------------------------------------------------------- 订单
 		showOrderForm(mode,order=null){if(mode==='edit'&&!this.canViewOrder(order)){uni.showToast({title:'已完成订单仅店长可查看',icon:'none'});return}this.showOrderMenu=false;this.orderFormMode=mode;this.editingOrderId=order?order.id:null;this.orderForm=order?{theme:order.theme,time:order.time,people:String(order.people),contact:order.contact,note:order.note}:{theme:this.themeOptions[0]||'',time:'',people:'',contact:'',note:''};this.orderFormVisible=true},
 		saveOrder(){
 			const oldOrder=this.orders.find(o=>o.id===this.editingOrderId)
 			if(this.orderFormMode==='edit'&&!this.canViewOrder(oldOrder)){this.ensureOrderVisibility();uni.showToast({title:oldOrder?'已完成订单仅店长可查看':'订单不存在',icon:'none'});return}
 			if(!this.orderForm.theme||!this.orderForm.time||!this.orderForm.people){uni.showToast({title:'请填写主题、时间和人数',icon:'none'});return}
 			if(!this.themeOptions.includes(this.orderForm.theme)&&!(this.orderFormMode==='edit'&&oldOrder?.theme===this.orderForm.theme)){uni.showToast({title:'主题已变更，请重新选择',icon:'none'});return}
+			const form={theme:this.orderForm.theme,time:this.orderForm.time,people:String(this.orderForm.people),contact:this.orderForm.contact,note:this.orderForm.note}
 			if(this.orderFormMode==='create'){
-				const newOrder={id:Date.now(),...this.orderForm,people:Number(this.orderForm.people),creator:this.actor(),createdAt:this.now(),cancelled:false,records:{}}
-				this.orders.unshift(newOrder);this.pushNotification('订单已创建',`${newOrder.creator} 创建“${newOrder.theme}” ${newOrder.time} 场次`,'info','＋');uni.showToast({title:'订单已创建',icon:'success'})
+				form.requestId=newRequestId()
+				this.runAction(()=>storeApi.createOrder(form),{success:'订单已创建',after:()=>{this.orderFormVisible=false}})
 			}else{
-				const order=oldOrder
-				if(order.records.start&&!order.records.start.theme)order.records.start.theme=order.theme
-				Object.assign(order,{...this.orderForm,people:Number(this.orderForm.people)})
-				this.pushNotification('订单已修改',`${this.actor()} 修改“${order.theme}”订单内容`,'info','✎')
-				if(this.selectedOrder&&this.selectedOrder.id===order.id)this.selectedOrder=order
-				uni.showToast({title:'修改已保存',icon:'success'})
+				const id=oldOrder.id
+				this.runAction(()=>storeApi.updateOrder(id,form),{success:'修改已保存',after:()=>{this.orderFormVisible=false;if(this.selectedOrder&&this.selectedOrder.id===id)this.selectedOrder=this.orders.find(order=>order.id===id)||null}})
 			}
-			this.orderFormVisible=false;this.persistNow()
 		},
 		openOrder(order){if(!this.canViewOrder(order)){uni.showToast({title:'已完成订单仅店长可查看',icon:'none'});return false}this.selectedOrder=order;this.showOrderMenu=false;return true},
 		toggleOrderMenu(){this.showOrderMenu=!this.showOrderMenu},
@@ -484,9 +722,9 @@ export default {
 		nextStep(order){return nextOrderStep(order)},
 		isCurrentStep(order,key){return canCompleteStep(order,key)},
 		stepState(order,step){if(this.stepDone(order,step.key))return'done';if(this.isCurrentStep(order,step.key))return'current';return'future'},
-		completeOrderStep(order,step){if(!canCompleteStep(order,step.key)){uni.showToast({title:'请先完成上一节点',icon:'none'});return}if(step.key==='payment'){this.openOrder(order);return}uni.showModal({title:step.key==='start'?`开始《${order.theme}》`:`确认${step.label}`,content:`操作人：${this.actor()}。完成后员工不能自行回退。`,confirmText:'确认完成',success:res=>{if(!res.confirm||!canCompleteStep(order,step.key))return;order.records[step.key]={operator:this.actor(),time:this.now(),...(step.key==='start'?{theme:order.theme}:{})};if(step.key==='start')this.pushNotification('订单已开始',`${order.theme} · ${this.actor()} 点击主题名称`,'order','▶');if(step.key==='host')this.pushNotification('开始带场建群',`${order.theme} · ${this.actor()} 开始处理`,'order','→');if(step.key==='edit'){const task=this.editingTasks.find(item=>item.orderId===order.id&&item.status==='pending');if(task)Object.assign(task,{status:'completed',completedAt:this.now(),completedBy:this.actor()});this.pushNotification('剪辑完毕',`${order.theme} 视频剪辑完成，订单已结束`,'success','✓')}this.persistNow();uni.showToast({title:step.status,icon:'success'})}})},
+		completeOrderStep(order,step){if(!canCompleteStep(order,step.key)){uni.showToast({title:'请先完成上一节点',icon:'none'});return}if(step.key==='payment'){this.openOrder(order);return}uni.showModal({title:step.key==='start'?`开始《${order.theme}》`:`确认${step.label}`,content:`操作人：${this.actor()}。完成后员工不能自行回退。`,confirmText:'确认完成',success:res=>{if(!res.confirm||!canCompleteStep(order,step.key))return;this.runAction(()=>storeApi.completeStep(order.id,step.key),{success:step.status})}})},
 		quickAdvance(order){if(!this.openOrder(order))return;const step=this.nextStep(order);if(step.branch||step.key==='done'||step.key==='cancelled')return;setTimeout(()=>this.completeOrderStep(order,step),250)},
-		chooseBranch(order,type,choice){if(!canCompleteStep(order,type)){uni.showToast({title:'请先完成上一节点',icon:'none'});return}uni.showModal({title:`确认选择“${choice}”`,content:type==='video'&&choice==='要视频'?'系统会建立关联剪辑任务，但不会发送通知。':type==='video'?'选择后订单直接完成。':'选择后将进入视频选择。',confirmText:'确认',success:res=>{if(!res.confirm||!canCompleteStep(order,type))return;order.records[type]={operator:this.actor(),time:this.now(),choice};if(type==='video'&&choice==='要视频'&&!this.editingTasks.some(item=>item.orderId===order.id&&item.status==='pending')){this.editingTasks.unshift({id:`edit-${order.id}-${Date.now()}`,orderId:order.id,theme:order.theme,createdAt:this.now(),createdBy:this.actor(),status:'pending'})}this.persistNow();uni.showToast({title:choice,icon:'success'})}})},
+		chooseBranch(order,type,choice){if(!canCompleteStep(order,type)){uni.showToast({title:'请先完成上一节点',icon:'none'});return}uni.showModal({title:`确认选择“${choice}”`,content:type==='video'&&choice==='要视频'?'系统会建立关联剪辑任务，但不会发送通知。':type==='video'?'选择后订单直接完成。':'选择后将进入视频选择。',confirmText:'确认',success:res=>{if(!res.confirm||!canCompleteStep(order,type))return;this.runAction(()=>storeApi.completeStep(order.id,type,choice),{success:choice})}})},
 		completedCount(order){return this.visibleSteps(order).filter(s=>order.records[s.key]).length},
 		totalSteps(order){return this.visibleSteps(order).length},
 		orderProgress(order){return calculateOrderProgress(order)},
@@ -496,10 +734,17 @@ export default {
 		statusTone(order){if(order.cancelled)return'danger';if(this.isOrderDone(order))return'success';if(this.isEditing(order))return'info';return'warning'},
 		compactSteps:compactOrderSteps,
 		lastOperator(order){const keys=Object.keys(order.records);if(!keys.length)return'尚无操作';const record=order.records[keys[keys.length-1]];return`${record.operator} · ${this.formatTime(record.time)}`},
-		openCorrection(order){if(!this.requireRole('manager'))return;this.showOrderMenu=false;this.correctionVisible=true;this.correctionOrder=order;const next=nextOrderStep(order),done=this.coreSteps.filter(step=>order.records[step.key]);this.correctionTarget=this.coreSteps.some(step=>step.key===next.key)?next.key:(done.length?done[done.length-1].key:'start');this.correctionReason=''},
-		applyCorrection(){if(!this.requireRole('manager'))return;if(!this.correctionReason.trim()){uni.showToast({title:'请填写修正原因',icon:'none'});return}const targetIndex=STEP_DEFINITIONS.findIndex(s=>s.key===this.correctionTarget);if(targetIndex<0){uni.showToast({title:'请选择要回退的节点',icon:'none'});return}STEP_DEFINITIONS.forEach((s,i)=>{if(i>=targetIndex)delete this.correctionOrder.records[s.key]});if(!this.correctionOrder.records.video||this.correctionOrder.records.video.choice!=='要视频'){this.editingTasks=this.editingTasks.filter(item=>item.orderId!==this.correctionOrder.id||item.status!=='pending')}this.pushNotification('订单节点已修正',`${this.correctionOrder.theme} 回退至“${STEP_DEFINITIONS[targetIndex].label}”待重新处理，原因：${this.correctionReason}`,'audit','↶');this.correctionVisible=false;this.persistNow();uni.showToast({title:this.correctionTarget==='payment'?'已退回收钱，可修改金额':'节点已回退',icon:'success'})},
-		cancelOrder(order){if(!this.requireRole('manager'))return;this.showOrderMenu=false;const receipt=this.receiptFor(order);uni.showModal({title:'取消订单',editable:true,placeholderText:'请输入取消原因',content:receipt&&receipt.status!=='reversed'?'取消后会同步冲正该订单的已收款记录。':'',confirmText:'确认取消',confirmColor:'#e4615a',success:res=>{if(res.confirm){order.cancelled=true;order.cancelReason=res.content||'店长取消';const reversed=reverseOrderPayment(this,order,this.workspaceContext,`取消订单：${order.cancelReason}`);const task=this.editingTasks.find(item=>item.orderId===order.id&&item.status==='pending');if(task)task.status='cancelled';this.pushNotification('订单已取消',`${order.theme} · ${order.cancelReason}${reversed?' · 收款已冲正':''}`,'audit','×');this.persistNow();uni.showToast({title:reversed?'订单已取消，收款已冲正':'订单已取消',icon:'none'})}}})},
-		deleteOrder(order){if(!this.requireRole('manager'))return;this.showOrderMenu=false;const receipt=this.receiptFor(order);uni.showModal({title:'删除订单',content:`确认删除“${order.theme}”？删除操作会保留日志${receipt&&receipt.status!=='reversed'?'，已收款将同步冲正':''}。`,confirmText:'确认删除',confirmColor:'#e4615a',success:res=>{if(res.confirm){const reversed=reverseOrderPayment(this,order,this.workspaceContext,'删除订单');this.orders=this.orders.filter(o=>o.id!==order.id);this.editingTasks=this.editingTasks.filter(item=>item.orderId!==order.id);this.pushNotification('订单已删除',`${order.theme} · 江店长删除${reversed?' · 收款已冲正':''}`,'audit','×');this.selectedOrder=null;this.persistNow();uni.showToast({title:reversed?'订单已删除，收款已冲正':'订单已删除',icon:'none'})}}})}
+		openCorrection(order){if(!this.requireRole('manager'))return;this.showOrderMenu=false;this.correctionVisible=true;this.correctionOrder=order;const next=nextOrderStep(order),done=this.coreSteps.filter(step=>order.records[step.key]);this.correctionTarget=this.coreSteps.some(step=>step.key===next.key)&&!done.length?next.key:(done.length?done[done.length-1].key:'start');this.correctionReason=''},
+		applyCorrection(){
+			if(!this.requireRole('manager'))return
+			if(!this.correctionReason.trim()){uni.showToast({title:'请填写修正原因',icon:'none'});return}
+			const targetIndex=STEP_DEFINITIONS.findIndex(s=>s.key===this.correctionTarget)
+			if(targetIndex<0){uni.showToast({title:'请选择要回退的节点',icon:'none'});return}
+			const order=this.correctionOrder,target=this.correctionTarget,reason=this.correctionReason
+			this.runAction(()=>storeApi.correctOrder(order.id,target,reason),{success:target==='payment'?'已退回收钱，可修改金额':'节点已回退',after:()=>{this.correctionVisible=false;this.correctionOrder=null}})
+		},
+		cancelOrder(order){if(!this.requireRole('manager'))return;this.showOrderMenu=false;const receipt=this.receiptFor(order);uni.showModal({title:'取消订单',editable:true,placeholderText:'请输入取消原因',content:receipt&&receipt.status!=='reversed'?'取消后会同步冲正该订单的已收款记录。':'',confirmText:'确认取消',confirmColor:'#e4615a',success:res=>{if(res.confirm)this.runAction(()=>storeApi.cancelOrder(order.id,res.content||''),{success:data=>data.reversed?'订单已取消，收款已冲正':'订单已取消',icon:'none'})}})},
+		deleteOrder(order){if(!this.requireRole('manager'))return;this.showOrderMenu=false;const receipt=this.receiptFor(order);uni.showModal({title:'删除订单',content:`确认删除“${order.theme}”？删除操作会保留日志${receipt&&receipt.status!=='reversed'?'，已收款将同步冲正':''}。`,confirmText:'确认删除',confirmColor:'#e4615a',success:res=>{if(res.confirm){this.selectedOrder=null;this.runAction(()=>storeApi.deleteOrder(order.id),{success:data=>data.reversed?'订单已删除，收款已冲正':'订单已删除',icon:'none'})}}})}
 	}
 }
 </script>

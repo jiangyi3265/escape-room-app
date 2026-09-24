@@ -72,10 +72,12 @@
 import { saveTheme, deleteTheme, savePresetTask, createRepair, completeRepair } from '../services/store-config.js'
 import { formatDateTime } from '../services/time-format.js'
 
+const clone = value => JSON.parse(JSON.stringify(value))
+
 export default {
-	props: { state: { type: Object, required: true }, context: { type: Object, required: true }, initialMode: { type: String, default: 'repairs' }, navigationStyle: { type: Object, default: () => ({}) } },
+	props: { state: { type: Object, required: true }, context: { type: Object, required: true }, actions: { type: Object, required: true }, initialMode: { type: String, default: 'repairs' }, navigationStyle: { type: Object, default: () => ({}) } },
 	emits: ['close', 'changed'],
-	data() { return { mode: this.context.role === 'manager' ? this.initialMode : 'repairs', tabs: [{ id: 'repairs', label: '维修' }, { id: 'points', label: '积分设置' }, { id: 'themes', label: '主题管理' }], taskCategories: ['接待', '服务', '维护', '打扫', '整理', '视频', '出勤'], repairFilter: 'pending', repairFormOpen: false, repairForm: { themeId: '', problem: '' }, taskDraft: {}, themeDraft: null, error: '' } },
+	data() { return { mode: this.context.role === 'manager' ? this.initialMode : 'repairs', tabs: [{ id: 'repairs', label: '维修' }, { id: 'points', label: '积分设置' }, { id: 'themes', label: '主题管理' }], taskCategories: ['接待', '服务', '维护', '打扫', '整理', '视频', '出勤'], repairFilter: 'pending', repairFormOpen: false, repairForm: { themeId: '', problem: '' }, taskDraft: {}, themeDraft: null, error: '', pending: false } },
 	computed: {
 		title() { return this.tabs.find(tab => tab.id === this.mode)?.label || '维修' },
 		activeThemes() { return this.state.themes.filter(theme => !theme.deleted) },
@@ -84,16 +86,22 @@ export default {
 	},
 	methods: {
 		changeMode(mode) { this.mode = mode; this.error = ''; this.taskDraft = {}; this.themeDraft = null; this.repairFormOpen = false },
-		perform(action, message) { try { action(); this.error = ''; this.$emit('changed', message); return true } catch (error) { this.error = error.message; uni.showToast({ title: error.message, icon: 'none' }); return false } },
+		// 先按门店规则在本机校验（即时提示），再提交门店系统；成功后由页面换上最新数据
+		async perform(validate, request, message) {
+			if (this.pending) return false
+			try { validate(clone(this.state)) } catch (error) { this.error = error.message; uni.showToast({ title: error.message, icon: 'none' }); return false }
+			this.pending = true
+			try { const result = await request(); this.error = ''; this.$emit('changed', message, result); return true } catch (error) { this.error = error.message; uni.showToast({ title: error.message, icon: 'none' }); return false } finally { this.pending = false }
+		},
 		openRepairForm() { this.repairFormOpen = true; this.error = '' },
-		submitRepair() { if (this.perform(() => createRepair(this.state, this.context, this.repairForm), '已登记待维修')) { this.repairFormOpen = false; this.repairFilter = 'pending'; this.repairForm = { themeId: '', problem: '' } } },
-		finishRepair(repair) { uni.showModal({ title: '确认已修理完成', content: `《${repair.theme}》：${repair.problem}\n完成后将记录修理人 ${this.context.name} 和完成时间。`, confirmText: '已完成', success: result => { if (result.confirm) this.perform(() => completeRepair(this.state, this.context, repair.id), '维修已完成') } }) },
+		async submitRepair() { const form = { ...this.repairForm }; if (await this.perform(state => createRepair(state, this.context, form), () => this.actions.createRepair(form), '已登记待维修')) { this.repairFormOpen = false; this.repairFilter = 'pending'; this.repairForm = { themeId: '', problem: '' } } },
+		finishRepair(repair) { uni.showModal({ title: '确认已修理完成', content: `《${repair.theme}》：${repair.problem}\n完成后将记录修理人 ${this.context.name} 和完成时间。`, confirmText: '已完成', success: result => { if (result.confirm) this.perform(state => completeRepair(state, this.context, repair.id), () => this.actions.completeRepair(repair.id), '维修已完成') } }) },
 		openTaskForm() { this.error = ''; this.taskDraft = { title: '', points: '', category: '服务', audit: false } },
 		editTask(task) { this.error = ''; this.taskDraft = { id: task.id, title: task.title, points: String(task.points), category: task.category, audit: Boolean(task.audit) } },
-		submitTask() { const adding = !this.taskDraft.id; if (this.perform(() => savePresetTask(this.state, this.context, this.taskDraft), adding ? '积分任务已新增' : '积分任务已保存')) this.taskDraft = {} },
+		async submitTask() { const draft = { ...this.taskDraft }; const adding = !draft.id; if (await this.perform(state => savePresetTask(state, this.context, draft), () => this.actions.saveTask(draft), adding ? '积分任务已新增' : '积分任务已保存')) this.taskDraft = {} },
 		editTheme(theme) { this.error = ''; this.themeDraft = theme ? { id: theme.id, name: theme.name } : { name: '' } },
-		submitTheme() { if (this.perform(() => saveTheme(this.state, this.context, this.themeDraft), '主题已保存')) this.themeDraft = null },
-		removeTheme(theme) { uni.showModal({ title: '删除主题', content: `删除《${theme.name}》后，新订单和新维修不再提供此选项。历史订单、维修和积分记录保留，待维修仍可完成。`, confirmText: '确认删除', confirmColor: '#e66a61', success: result => { if (result.confirm && this.perform(() => deleteTheme(this.state, this.context, theme.id), '主题已删除')) this.themeDraft = null } }) },
+		async submitTheme() { const draft = { ...this.themeDraft, name: String(this.themeDraft?.name || '').trim() }; if (await this.perform(state => saveTheme(state, this.context, draft), () => this.actions.saveTheme(draft), '主题已保存')) this.themeDraft = null },
+		removeTheme(theme) { uni.showModal({ title: '删除主题', content: `删除《${theme.name}》后，新订单和新维修不再提供此选项。历史订单、维修和积分记录保留，待维修仍可完成。`, confirmText: '确认删除', confirmColor: '#e66a61', success: async result => { if (result.confirm && await this.perform(state => deleteTheme(state, this.context, theme.id), () => this.actions.deleteTheme(theme.id), '主题已删除')) this.themeDraft = null } }) },
 		formatTime(value) { return formatDateTime(value, new Date(), true) }
 	}
 }

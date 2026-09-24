@@ -8,10 +8,14 @@
     "test:payments": "node scripts/test-payments.mjs",
     "test:store-config": "node scripts/test-store-config.mjs",
     "test:redlines": "node scripts/test-redline-requirements.mjs",
+    "test:style": "node scripts/test-style-unchanged.mjs",
+    "test": "npm run test:navigation && npm run test:order-visibility && npm run test:payments && npm run test:store-config && npm run test:redlines && npm run test:style",
+    "test:live": "node scripts/test-live-flows.mjs",
+    "test:h5": "node scripts/test-h5-e2e.mjs",
     "dev:h5": "cross-env UNI_INPUT_DIR=. uni",
     "build:h5": "cross-env UNI_INPUT_DIR=. uni build",
     "dev:mp-weixin": "cross-env UNI_INPUT_DIR=. uni -p mp-weixin",
-    "build:mp-weixin": "cross-env UNI_INPUT_DIR=. uni build -p mp-weixin",
+    "build:mp-weixin": "node scripts/check-miniapp-release.mjs && cross-env UNI_INPUT_DIR=. uni build -p mp-weixin",
     "visual:check": "python scripts/compare_visuals.py"
   },
   "dependencies": {

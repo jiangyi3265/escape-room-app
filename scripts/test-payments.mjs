@@ -85,11 +85,21 @@ check('exact 12 two-character labels and no-video completion', () => {
 	flow.records.edit = {}; assert.equal(rules.compactOrderSteps(flow).at(-1).done, true)
 	flow.cancelled = true; assert.ok(rules.compactOrderSteps(flow).every(step => !step.current))
 })
-check('legacy migration does not invent receipt amounts; new ledger survives reload', () => {
-	const legacy = app.createInitialAppState(); delete legacy.receipts
-	saved = { version: 3, data: legacy }; const migrated = app.loadAppState()
-	assert.deepEqual(migrated.receipts, [])
-	migrated.receipts = state.receipts; app.saveAppState(migrated)
-	assert.deepEqual(app.loadAppState().receipts, state.receipts); assert.equal(saved.version, 5)
+check('server snapshot without receipts never invents amounts; cached ledger survives reload', () => {
+	const normalised = app.normaliseSnapshotState({ orders: [order] })
+	assert.deepEqual(normalised.receipts, [])
+	const partial = app.normaliseSnapshotState({ receipts: [{ id: 'old', orderId: 'x', amounts: { cash: 100 } }] })
+	assert.deepEqual(partial.receipts[0].amounts, { wechat: 0, alipay: 0, cash: 100, online: 0 })
+	assert.equal(partial.receipts[0].status, 'active'); assert.deepEqual(partial.receipts[0].revisions, [])
+	const snapshot = { version: '42:2026-09-06', me: { id: 1, name: '江店长', role: 'manager' }, state: { ...app.createEmptyAppState(), receipts: state.receipts } }
+	assert.equal(app.saveCachedSnapshot(snapshot), true)
+	assert.deepEqual(app.loadCachedSnapshot().state.receipts, state.receipts)
+	assert.equal(saved.version, 6)
+})
+check('newer server data is never replaced by an older refresh', () => {
+	assert.equal(app.isSameOrNewerVersion('12:2026-09-06', '11:2026-09-06'), true)
+	assert.equal(app.isSameOrNewerVersion('11:2026-09-07', '11:2026-09-06'), true)
+	assert.equal(app.isSameOrNewerVersion('10:2026-09-06', '11:2026-09-06'), false)
+	assert.equal(app.isSameOrNewerVersion('10:2026-09-06', ''), true)
 })
 console.log(`${checks} payment and progress checks passed`)
