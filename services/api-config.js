@@ -11,6 +11,7 @@ export function apiBaseUrl() {
 	return H5_PROXY_PREFIX
 	// #endif
 	// #ifndef H5
+	if (import.meta.env.PROD) throw new Error('门店线上接口未配置，请联系管理员')
 	// 微信开发者工具里勾选「不校验合法域名」后可直连本机后端
 	return 'http://127.0.0.1:8087'
 	// #endif

@@ -17,7 +17,7 @@ try {
 }
 
 const host = url.hostname.toLowerCase()
-const placeholder = host === 'localhost' || host.endsWith('.localhost') || host === 'example.com' || host.endsWith('.example.com') || host === '127.0.0.1' || /^\d+\.\d+\.\d+\.\d+$/.test(host)
+const placeholder = ['localhost', 'example.com', 'example.net', 'example.org', 'invalid', 'test', 'local', 'internal'].some(name => host === name || host.endsWith('.' + name)) || /^\d+\.\d+\.\d+\.\d+$/.test(host)
 if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash || placeholder) {
   console.error('微信小程序构建已停止：接口必须是有效的公开 HTTPS 域名，不能使用本机、IP 或示例域名。')
   process.exit(1)
