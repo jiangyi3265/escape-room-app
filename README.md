@@ -56,7 +56,8 @@ npm run build:mp-weixin
 - **H5 部署**：把 `dist/build/h5` 放到网站目录，并让反向代理把 `/store-api/` 转发到后端（去掉 `/store-api` 前缀）。
 - **微信小程序**：在 `.env.local` 填写 `VITE_API_BASE_URL`（可公网访问的 https 后端地址，并加入小程序「request 合法域名」）后重新构建；
   生产构建会检查该地址。未配置时会停止构建，避免上传只能连接本机的审核包；`dev:mp-weixin` 仍可在开发者工具中连接本机调试。
-  生产构建输出 `dist/build/mp-weixin`，把 `manifest.json` 与 `project.config.json` 的 AppID 改成自己的小程序账号。
+  生产构建输出 `dist/build/mp-weixin`，可直接导入微信开发者工具；用命令行上传时也可将本仓库根目录作为项目目录。
+  把 `manifest.json` 与 `project.config.json` 的 AppID 改成自己的小程序账号。
 
 启用订阅通知时，在 `.env.local` 填写公开的订阅模板 ID `VITE_WECHAT_SUBSCRIBE_TEMPLATE_IDS`（逗号分隔），模板字段为
 `thing1`、`thing2`、`time3`。在微信云开发中创建 `notification_subscribers` 集合，部署 `cloudfunctions/sendStoreNotification`
